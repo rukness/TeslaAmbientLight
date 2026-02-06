@@ -35,7 +35,7 @@ void DoorLight::setColorByCarState(CarLight& carLight) {
   DoorState state = carLight.doorLightState[_doorNum];
   _brightness = carLight.brightness;
   unsigned long stateAge = millis() - carLight.doorLightMs[_doorNum];
-  double max = 255;
+  float max = 255;
   if (_brightness < 0x05) {
     max = 0;
   } else {
@@ -61,11 +61,11 @@ void DoorLight::setColorByCarState(CarLight& carLight) {
       if (_brightness < 0x0A) {
         _setTargetColor(i, 0, 0, max);
       } else {
-        double r = max - map(i, 0, _numPixels, 0, max);
-        double gMax = max * 0.9;
+        float r = max - map(i, 0, _numPixels, 0, (long)max);
+        float gMax = max * 0.9f;
         if (gMax < 40)
           gMax = 40;
-        double g = map(i, 0, _numPixels, 0, gMax);
+        float g = map(i, 0, _numPixels, 0, (long)gMax);
         _setTargetColor(i, r, g, max);
       }
     }
@@ -109,8 +109,8 @@ void DoorLight::setColorByCarState(CarLight& carLight) {
     }
   }
 
-  double g = max / 5;
-  double r = max;
+  float g = max / 5;
+  float r = max;
   if (r < 200)
     r = 200;
   if (g < 60)
@@ -150,16 +150,16 @@ void DoorLight::setColorByCarState(CarLight& carLight) {
   _oldBrightness = _stripBrightness;
 }
 
-void DoorLight::_updateTargetColor(int i, double r, double g, double b) {
-  uint32_t color = Adafruit_NeoPixel::Color(round(r), round(g), round(b));
+void DoorLight::_updateTargetColor(int i, float r, float g, float b) {
+  uint32_t color = Adafruit_NeoPixel::Color(lroundf(r), lroundf(g), lroundf(b));
   _oldTargetColor[i] = color;
   _targetColor[0][i] = r;
   _targetColor[1][i] = g;
   _targetColor[2][i] = b;
 }
 
-void DoorLight::_setTargetColor(int i, double r, double g, double b) {
-  uint32_t color = Adafruit_NeoPixel::Color(round(r), round(g), round(b));
+void DoorLight::_setTargetColor(int i, float r, float g, float b) {
+  uint32_t color = Adafruit_NeoPixel::Color(lroundf(r), lroundf(g), lroundf(b));
   if (_oldTargetColor[i] != color) {
     _oldTargetColor[i] = color;
     _targetColor[0][i] = r;
@@ -169,7 +169,7 @@ void DoorLight::_setTargetColor(int i, double r, double g, double b) {
   }
 }
 
-void DoorLight::_setCurrentColor(int i, double r, double g, double b) {
+void DoorLight::_setCurrentColor(int i, float r, float g, float b) {
   _currentColor[0][i] = r;
   _currentColor[1][i] = g;
   _currentColor[2][i] = b;
@@ -190,7 +190,7 @@ void DoorLight::_fadeColor() {
     left = 0;
 
   int step = millis() - _colorTransitionLastMs;
-  for (int i = 0; i < _numPixels; i++) {
+  for (int i = _firstPixel; i <= _lastPixel; i++) {
     for (byte c = 0; c < 3; c++) {
       if (_currentColor[c][i] == _targetColor[c][i])
         continue;
@@ -198,11 +198,11 @@ void DoorLight::_fadeColor() {
         _currentColor[c][i] = _targetColor[c][i];
         continue;
       }
-      double delta = _targetColor[c][i] - _currentColor[c][i];
+      float delta = _targetColor[c][i] - _currentColor[c][i];
 
-      double needToChange = delta * step / left;
-      if (abs(needToChange) > abs(_currentColor[c][i] - _targetColor[c][i]))
-        _currentColor[c][i] == _targetColor[c][i];
+      float needToChange = delta * step / left;
+      if (fabsf(needToChange) > fabsf(delta))
+        _currentColor[c][i] = _targetColor[c][i];
       else
         _currentColor[c][i] += needToChange;
     }
@@ -214,7 +214,7 @@ void DoorLight::_pushColorToStrip() {
   bool changed = false;
   _strip->setBrightness(_stripBrightness);
   for (int i = _firstPixel; i <= _lastPixel; i++) {
-    uint32_t color = Adafruit_NeoPixel::Color(round(_currentColor[0][i]), round(_currentColor[1][i]), round(_currentColor[2][i]));
+    uint32_t color = Adafruit_NeoPixel::Color(lroundf(_currentColor[0][i]), lroundf(_currentColor[1][i]), lroundf(_currentColor[2][i]));
     if (_oldColor[i] != color) {
       changed = true;
       _oldColor[i] = color;

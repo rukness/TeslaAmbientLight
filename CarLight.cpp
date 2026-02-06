@@ -161,8 +161,7 @@ void CarLight::receiveLightState() {
   //if (millis() - lastUdpMs > 10000)
   //  ESP.restart();
 
-  //byte doorNum = role - 1;
-  char packetBuffer[255];
+  uint8_t packetBuffer[255];
   int packetSize = _udp->parsePacket();
   if (packetSize) {
     int len = _udp->read(packetBuffer, 255);
@@ -178,13 +177,14 @@ void CarLight::receiveLightState() {
         byte state = packetBuffer[1 + doorNum * doorLen];
         unsigned long age = 0;
         for (byte i = 0; i < 4; i++)
-          age += packetBuffer[2 + i + doorNum * doorLen] * pow(255, i);
+          age += (unsigned long)packetBuffer[2 + i + doorNum * doorLen] << (8 * i);
 
         unsigned long stateNewMs = millis() - age;
         if (state == lastState) {
-          int d = stateNewMs > stateMs ? stateNewMs - stateMs : -(stateMs - stateNewMs);
-
-          stateMs = stateMs + round(d / ++_stateCnt);
+          long d = (long)(stateNewMs - stateMs);
+          if (_stateCnt < 100)
+            _stateCnt++;
+          stateMs = stateMs + d / _stateCnt;
         } else {
           _stateCnt = 1;
           stateMs = stateNewMs;

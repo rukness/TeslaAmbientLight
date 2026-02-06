@@ -48,7 +48,7 @@ void FootLight::initRGB(byte doorNum, byte ledPin) {
   _lastPixel = numPixelsFoot - 1;
   _transition = 1000;
   _numPixels = numPixelsFoot;
-  _strip = new Adafruit_NeoPixel(numPixels, ledPin, NEO_GRB + NEO_KHZ800);
+  _strip = new Adafruit_NeoPixel(numPixelsFoot, ledPin, NEO_GRB + NEO_KHZ800);
   _strip->begin();
 }
 
@@ -67,7 +67,7 @@ void FootLight::setColorByCarState(CarLight& carLight) {
   _fadeColor();
 
   if (_ledHLPin > 0) {
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, _ledChannel, round(_currentColor[0][0]));
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, _ledChannel, lroundf(_currentColor[0][0]));
     ledc_update_duty(LEDC_LOW_SPEED_MODE, _ledChannel);
   } else {
     _pushColorToStrip();

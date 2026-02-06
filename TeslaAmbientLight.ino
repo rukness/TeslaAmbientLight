@@ -9,31 +9,35 @@
 #include "FootLight.h"
 #include "MirrorLight.h"
 
-#define AUTOSPORT_ESP32 false
+// Board targets:
+//   Master  (Role 0):   ESP32 original + 2x MCP2515, or Autosport S3 board (TWAI + MCP2515)
+//   Door modules (Role 1-4): ESP32-S3 Mini (3 RMT channels for door/mirror/pocket strips)
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+// --- LED pin assignments per chip target ---
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
 const int pocketLedPin = 10;
 const int mirrorPin = 11;
 const int ledPin = 12;
-#else
-#ifdef CONFIG_IDF_TARGET_ESP32C3
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
 const int pocketLedPin = 2;
 const int mirrorPin = 4;
 const int ledPin = 3;
-#else
+#else // Original ESP32
 const int pocketLedPin = 14;
 const int mirrorPin = 15;
 const int ledPin = 12;
 #endif
-#endif
-
 
 const bool externalWifi = false;
 const char* ssid = "T3LIGHT";
 const char* password = "12345678";
 const char* passwordOTA = "12345678";
 
-#ifdef AUTOSPORT_ESP32
+// --- Master CAN + footwell pins ---
+// Set to 1 for Autosport ESP32-S3 board (uses TWAI for VCAN + MCP2515 for CCAN)
+#define AUTOSPORT_BOARD 0
+
+#if AUTOSPORT_BOARD
 const int vCanPin = 0;
 const int cCanPin = 10;
 const bool asBoard = true;
@@ -106,12 +110,9 @@ void setup() {
       IPAddress local_IP(192, 168, 4, 10);
       IPAddress subnet(255, 255, 255, 0);
       IPAddress gateway(192, 168, 4, 1);
-      if (!WiFi.config(local_IP, gateway, subnet)) {
-        Serial.println("Configuration Failed!");
-      }
-    
       WiFi.mode(WIFI_AP);
       WiFi.softAP(ssid, password, 1, 0, 10, false);
+      WiFi.softAPConfig(local_IP, gateway, subnet);
       Serial.println("WIFI started");
     }
   } else {
@@ -160,22 +161,24 @@ void setup() {
   ArduinoOTA.begin();
 }
 
+unsigned long lastLightUpdate = 0;
+
 void loop() {
   ArduinoOTA.handle();
   if (role == 0) {
     car.process();
-    if (!car.displayOn)
-      delay(10);
-    else
-      delay(1);
-    carLight.processCarState(car);
-    carLight.sendLightState();
-    leftFootLight.setColorByCarState(carLight);
-    rightFootLight.setColorByCarState(carLight);
+    unsigned long now = millis();
+    if (now - lastLightUpdate >= 10) {
+      lastLightUpdate = now;
+      carLight.processCarState(car);
+      carLight.sendLightState();
+      leftFootLight.setColorByCarState(carLight);
+      rightFootLight.setColorByCarState(carLight);
+    }
   } else {
-    delay(10);
     carLight.receiveLightState();
     doorLight.setColorByCarState(carLight);
     mirrorLight.setColorByCarState(carLight);
+    yield();
   }
 }

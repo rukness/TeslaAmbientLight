@@ -242,7 +242,7 @@ void Car::_processVehicleControl(unsigned char len, unsigned char data[]) {
 }
 
 void Car::process() {
-  if (_v_enabled && _VCAN->checkReceive()) {
+  while (_v_enabled && _VCAN->checkReceive()) {
     long unsigned int rxId;
     unsigned char len = 0;
     unsigned char rxBuf[8];
@@ -282,13 +282,8 @@ void Car::process() {
       // Serial.printf("TX buffered: %lu\t", twaistatus.msgs_to_tx);
     }
 
-    // Handle alerts
     if (alerts_triggered & TWAI_ALERT_ERR_PASS) {
       Serial.println("Alert: TWAI controller has become error passive.");
-    }
-    if (alerts_triggered & TWAI_ALERT_BUS_ERROR) {
-      Serial.println("Alert: A (Bit, Stuff, CRC, Form, ACK) error has occurred on the bus.");
-      Serial.printf("Bus error count: %lu\n", twaistatus.bus_error_count);
     }
     // if (alerts_triggered & TWAI_ALERT_RX_QUEUE_FULL) {
     //   Serial.println("Alert: The RX queue is full causing a received frame to be lost.");
@@ -304,15 +299,14 @@ void Car::process() {
       while (twai_receive(&message, 0) == ESP_OK) {
         _handle_twai_rx_message(message);
       }
-      twai_clear_receive_queue();
     }
   }
 
-  if (_c_enabled && _CCAN->checkReceive()) {
+  while (_c_enabled && _CCAN->checkReceive()) {
     long unsigned int rxId;
     unsigned char len = 0;
     unsigned char rxBuf[8];
-    _CCAN->readMsgBuf(&rxId, &len, rxBuf);  // Read data: len = data length, buf = data byte(s)
+    _CCAN->readMsgBuf(&rxId, &len, rxBuf);
     if (rxId == 0x399) {
       _processAutopilot(len, rxBuf);
     } else if (rxId == 0x39D) {
