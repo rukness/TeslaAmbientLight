@@ -89,10 +89,6 @@ void setup() {
   Serial.println(role);
 
   if (role == 0) {
-    if (asBoard)
-      car.initAS(cCanPin, vCanRxPin, vCanTxPin);
-    else
-      car.init(vCanPin, cCanPin);
     leftFootLight.initHL(1, leftFootwellHLPin);
     rightFootLight.initHL(2, rightFootwellHLPin);
     //leftFootLight.initRGB(1, leftFootwellPin);
@@ -115,21 +111,32 @@ void setup() {
       WiFi.softAPConfig(local_IP, gateway, subnet);
       Serial.println("WIFI started");
     }
+    // Init CAN after WiFi so AP is available even if MCP2515 hardware is missing
+    Serial.println("Initializing CAN...");
+    if (asBoard)
+      car.initAS(cCanPin, vCanRxPin, vCanTxPin);
+    else
+      car.init(vCanPin, cCanPin);
+    Serial.println("CAN init done");
   } else {
+    doorLight.init(role - 1, ledPin, pocketLedPin);
+    mirrorLight.init(role - 1, mirrorPin);
     IPAddress local_IP(192, 168, 4, 10 + role);
     IPAddress subnet(255, 255, 255, 0);
     IPAddress gateway(192, 168, 4, 1);
     if (!WiFi.config(local_IP, gateway, subnet)) {
       Serial.println("Configuration Failed!");
     }
-    doorLight.init(role - 1, ledPin, pocketLedPin);
-    mirrorLight.init(role - 1, mirrorPin);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password, 1);
+    Serial.println("Connecting to WiFi...");
+    int retries = 0;
     while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.println("Connection Failed! Rebooting...");
+      retries++;
+      Serial.printf("WiFi connect attempt %d failed, retrying...\n", retries);
+      WiFi.disconnect();
       delay(1000);
-      ESP.restart();
+      WiFi.begin(ssid, password, 1);
     }
     Serial.println("Connected");
   }
